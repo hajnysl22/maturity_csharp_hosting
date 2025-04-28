@@ -1,0 +1,64 @@
+﻿@model List<PoznamkyApp.Models.Note>
+
+@{
+    ViewData["Title"] = "Moje Poznámky";
+}
+
+<h2>Moje Poznámky</h2>
+
+<form method="post" asp-action="Create">
+    <div>
+        <input type="text" name="title" placeholder="Nadpis poznámky" required />
+    </div>
+    <div>
+        <textarea name="content" placeholder="Text poznámky" required></textarea>
+    </div>
+    <button type="submit">Přidat poznámku</button>
+</form>
+
+<hr />
+
+<a href="@Url.Action("Index", new { onlyImportant = false })">Všechny poznámky</a> |
+<a href="@Url.Action("Index", new { onlyImportant = true })">Pouze důležité</a> |
+<a href="@Url.Action("Logout", "Account")">Odhlásit se</a>
+
+<table>
+    <thead>
+        <tr>
+            <th>Nadpis</th>
+            <th>Text</th>
+            <th>Datum</th>
+            <th>Akce</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var note in Model)
+        {
+            <tr>
+                <td>@note.Title</td>
+                <td>@note.Content</td>
+                <td>@note.CreatedAt.ToString("dd.MM.yyyy HH:mm")</td>
+                <td>
+                    <form method="post" asp-action="Delete" asp-route-id="@note.Id" style="display:inline;">
+                        <button type="submit">Smazat</button>
+                    </form>
+                    <form method="post" asp-action="ToggleImportant" asp-route-id="@note.Id" style="display:inline;">
+                        <button type="submit">
+                            @(note.IsImportant ? "Odznačit důležité" : "Označit důležité")
+                        </button>
+                    </form>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<hr />
+
+<h3>Zrušení účtu</h3>
+<form method="post" asp-action="DeleteAccount">
+    <div>
+        <input type="password" name="password" placeholder="Potvrďte heslo" required />
+    </div>
+    <button type="submit" style="color:red;">Zrušit účet</button>
+</form>

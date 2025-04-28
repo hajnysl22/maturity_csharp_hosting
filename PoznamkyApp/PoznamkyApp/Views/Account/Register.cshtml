@@ -1,0 +1,30 @@
+﻿@{
+    ViewData["Title"] = "Registrace";
+}
+
+<h2>Registrace</h2>
+
+<form method="post">
+    <div>
+        <label>Uživatelské jméno:</label>
+        <input type="text" name="username" required />
+    </div>
+    <div>
+        <label>Heslo:</label>
+        <input type="password" name="password" required />
+    </div>
+    <div>
+        <label>
+            <input type="checkbox" name="consent" required />
+            Souhlasím, že nebudu posílat nevhodné poznámky.
+        </label>
+    </div>
+    <button type="submit">Registrovat</button>
+</form>
+
+<p>Máte již účet? <a href="@Url.Action("Login", "Account")">Přihlásit se</a></p>
+
+@foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+{
+    <p style="color:red">@error.ErrorMessage</p>
+}
