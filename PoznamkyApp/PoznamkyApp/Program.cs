@@ -5,11 +5,14 @@ public class Program
 {
     public static void Main(string[] args)
     {
-        // Load .env file before building the app
-        Env.Load();
 
         var builder = WebApplication.CreateBuilder(args);
 
+        // Load .env file before building the app
+        if (builder.Environment.IsDevelopment())
+        {
+            DotNetEnv.Env.Load(); // Only load .env locally
+        }
         builder.Services.AddSingleton<MongoDbContext>();
 
         builder.Services.AddControllersWithViews();
