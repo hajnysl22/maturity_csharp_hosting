@@ -1,23 +1,22 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+using MongoDB.Driver;
 using PoznamkyApp.Data;
 using PoznamkyApp.Models;
-using System.Linq;
 
 namespace PoznamkyApp.Controllers
 {
     public class NotesController : Controller
     {
-        private readonly AppDbContext _context;
+        private readonly MongoDbContext _db;
 
-        public NotesController(AppDbContext context)
+        public NotesController(MongoDbContext db)
         {
-            _context = context;
+            _db = db;
         }
 
-        private int? GetUserId()
+        private string? GetUserId()
         {
-            return HttpContext.Session.GetInt32("UserId");
+            return HttpContext.Session.GetString("UserId");
         }
 
         public IActionResult Index(bool onlyImportant = false)
@@ -26,12 +25,15 @@ namespace PoznamkyApp.Controllers
             if (userId == null)
                 return RedirectToAction("Login", "Account");
 
-            var notes = _context.Notes.Where(n => n.UserId == userId);
-
+            var filter = Builders<Note>.Filter.Eq(n => n.UserId, userId);
             if (onlyImportant)
-                notes = notes.Where(n => n.IsImportant);
+                filter = Builders<Note>.Filter.And(filter, Builders<Note>.Filter.Eq(n => n.IsImportant, true));
 
-            return View(notes.OrderByDescending(n => n.CreatedAt).ToList());
+            var notes = _db.Notes.Find(filter)
+                                 .SortByDescending(n => n.CreatedAt)
+                                 .ToList();
+
+            return View(notes);
         }
 
         [HttpPost]
@@ -45,44 +47,47 @@ namespace PoznamkyApp.Controllers
             {
                 Title = title,
                 Content = content,
-                UserId = userId.Value
+                UserId = userId,
+                CreatedAt = DateTime.Now
             };
 
-            _context.Notes.Add(note);
-            _context.SaveChanges();
-
+            _db.Notes.InsertOne(note);
             return RedirectToAction("Index");
         }
 
         [HttpPost]
-        public IActionResult Delete(int id)
+        public IActionResult Delete(string id)
         {
             var userId = GetUserId();
             if (userId == null)
                 return RedirectToAction("Login", "Account");
 
-            var note = _context.Notes.FirstOrDefault(n => n.Id == id && n.UserId == userId);
-            if (note != null)
-            {
-                _context.Notes.Remove(note);
-                _context.SaveChanges();
-            }
+            var filter = Builders<Note>.Filter.And(
+                Builders<Note>.Filter.Eq(n => n.Id, id),
+                Builders<Note>.Filter.Eq(n => n.UserId, userId)
+            );
 
+            _db.Notes.DeleteOne(filter);
             return RedirectToAction("Index");
         }
 
         [HttpPost]
-        public IActionResult ToggleImportant(int id)
+        public IActionResult ToggleImportant(string id)
         {
             var userId = GetUserId();
             if (userId == null)
                 return RedirectToAction("Login", "Account");
 
-            var note = _context.Notes.FirstOrDefault(n => n.Id == id && n.UserId == userId);
+            var filter = Builders<Note>.Filter.And(
+                Builders<Note>.Filter.Eq(n => n.Id, id),
+                Builders<Note>.Filter.Eq(n => n.UserId, userId)
+            );
+
+            var note = _db.Notes.Find(filter).FirstOrDefault();
             if (note != null)
             {
                 note.IsImportant = !note.IsImportant;
-                _context.SaveChanges();
+                _db.Notes.ReplaceOne(filter, note);
             }
 
             return RedirectToAction("Index");
@@ -95,33 +100,30 @@ namespace PoznamkyApp.Controllers
             if (userId == null)
                 return RedirectToAction("Login", "Account");
 
-            var user = _context.Users.Include(u => u.Notes).FirstOrDefault(u => u.Id == userId);
+            var user = _db.Users.Find(u => u.Id == userId).FirstOrDefault();
+
             if (user == null || user.PasswordHash != AccountControllerStatic.HashPassword(password))
             {
                 ModelState.AddModelError(string.Empty, "Chybné heslo.");
                 return RedirectToAction("Index");
             }
 
-            _context.Notes.RemoveRange(user.Notes);
-            _context.Users.Remove(user);
-            _context.SaveChanges();
+            _db.Notes.DeleteMany(n => n.UserId == userId);
+            _db.Users.DeleteOne(u => u.Id == userId);
 
             HttpContext.Session.Clear();
-
             return RedirectToAction("Register", "Account");
         }
     }
 
-    // Malý pomocník kvůli heslu:
+    // Helper to hash passwords (static version for cross-class use)
     public static class AccountControllerStatic
     {
         public static string HashPassword(string password)
         {
-            using (var sha256 = System.Security.Cryptography.SHA256.Create())
-            {
-                var hashedBytes = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(password));
-                return BitConverter.ToString(hashedBytes).Replace("-", "").ToLower();
-            }
+            using var sha256 = System.Security.Cryptography.SHA256.Create();
+            var bytes = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(password));
+            return BitConverter.ToString(bytes).Replace("-", "").ToLower();
         }
     }
 }
