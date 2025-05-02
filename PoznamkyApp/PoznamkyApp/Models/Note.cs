@@ -1,10 +1,14 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
+using System.ComponentModel.DataAnnotations;
 
 namespace PoznamkyApp.Models
 {
     public class Note
     {
-        public int Id { get; set; }
+        [BsonId]
+        [BsonRepresentation(BsonType.ObjectId)]
+        public string Id { get; set; }
 
         [Required]
         public string Title { get; set; }
@@ -14,9 +18,9 @@ namespace PoznamkyApp.Models
 
         public DateTime CreatedAt { get; set; } = DateTime.Now;
 
-        public bool IsImportant { get; set; } = false;
+        public bool IsImportant { get; set; }
 
-        public int UserId { get; set; }
-        public User User { get; set; }
+        [BsonRepresentation(BsonType.ObjectId)]
+        public string UserId { get; set; }
     }
 }
