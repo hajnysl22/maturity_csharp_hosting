@@ -1,23 +1,32 @@
+using DotNetEnv;
 using PoznamkyApp.Data;
 
-var builder = WebApplication.CreateBuilder(args);
+public class Program
+{
+    public static void Main(string[] args)
+    {
+        // Load .env file before building the app
+        Env.Load();
 
-// MongoDB context
-builder.Services.AddSingleton<MongoDbContext>();
+        var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllersWithViews();
-builder.Services.AddHttpContextAccessor();
-builder.Services.AddSession();
+        builder.Services.AddSingleton<MongoDbContext>();
 
-var app = builder.Build();
+        builder.Services.AddControllersWithViews();
+        builder.Services.AddHttpContextAccessor();
+        builder.Services.AddSession();
 
-app.UseRouting();
-app.UseStaticFiles();
-app.UseSession();
-app.UseAuthorization();
+        var app = builder.Build();
 
-app.MapControllerRoute(
-    name: "default",
-    pattern: "{controller=Account}/{action=Register}/{id?}");
+        app.UseRouting();
+        app.UseSession();
+        app.UseStaticFiles();
+        app.UseAuthorization();
 
-app.Run();
+        app.MapControllerRoute(
+            name: "default",
+            pattern: "{controller=Account}/{action=Register}/{id?}");
+
+        app.Run();
+    }
+}
