@@ -1,25 +1,22 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using PoznamkyApp.Data;
 using PoznamkyApp.Models;
+using MongoDB.Driver;
 using System.Security.Cryptography;
 using System.Text;
-using System.Linq;
 
 namespace PoznamkyApp.Controllers
 {
     public class AccountController : Controller
     {
-        private readonly AppDbContext _context;
+        private readonly MongoDbContext _db;
 
-        public AccountController(AppDbContext context)
+        public AccountController(MongoDbContext db)
         {
-            _context = context;
+            _db = db;
         }
 
-        public IActionResult Register()
-        {
-            return View();
-        }
+        public IActionResult Register() => View();
 
         [HttpPost]
         public IActionResult Register(string username, string password, string consent)
@@ -30,7 +27,7 @@ namespace PoznamkyApp.Controllers
                 return View();
             }
 
-            if (_context.Users.Any(u => u.Username == username))
+            if (_db.Users.Find(u => u.Username == username).Any())
             {
                 ModelState.AddModelError(string.Empty, "Uživatelské jméno je již obsazené.");
                 return View();
@@ -43,22 +40,16 @@ namespace PoznamkyApp.Controllers
                 ConsentForRegistering = true
             };
 
-            _context.Users.Add(user);
-            _context.SaveChanges();
-
+            _db.Users.InsertOne(user);
             return RedirectToAction("Login");
         }
 
-
-        public IActionResult Login()
-        {
-            return View();
-        }
+        public IActionResult Login() => View();
 
         [HttpPost]
         public IActionResult Login(string username, string password)
         {
-            var user = _context.Users.SingleOrDefault(u => u.Username == username);
+            var user = _db.Users.Find(u => u.Username == username).FirstOrDefault();
 
             if (user == null || user.PasswordHash != HashPassword(password))
             {
@@ -66,8 +57,7 @@ namespace PoznamkyApp.Controllers
                 return View();
             }
 
-            HttpContext.Session.SetInt32("UserId", user.Id);
-
+            HttpContext.Session.SetString("UserId", user.Id);
             return RedirectToAction("Index", "Notes");
         }
 
@@ -79,11 +69,9 @@ namespace PoznamkyApp.Controllers
 
         private string HashPassword(string password)
         {
-            using (var sha256 = SHA256.Create())
-            {
-                var hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
-                return BitConverter.ToString(hashedBytes).Replace("-", "").ToLower();
-            }
+            using var sha256 = SHA256.Create();
+            var bytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
+            return BitConverter.ToString(bytes).Replace("-", "").ToLower();
         }
     }
 }
