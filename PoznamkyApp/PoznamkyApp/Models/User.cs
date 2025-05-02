@@ -1,13 +1,16 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
+using System.ComponentModel.DataAnnotations;
 
 namespace PoznamkyApp.Models
 {
     public class User
     {
-        public int Id { get; set; }
+        [BsonId]
+        [BsonRepresentation(BsonType.ObjectId)]
+        public string Id { get; set; }
 
         [Required]
-        [StringLength(100)]
         public string Username { get; set; }
 
         [Required]
@@ -15,7 +18,5 @@ namespace PoznamkyApp.Models
 
         [Required]
         public bool ConsentForRegistering { get; set; }
-
-        public List<Note> Notes { get; set; }
     }
 }
