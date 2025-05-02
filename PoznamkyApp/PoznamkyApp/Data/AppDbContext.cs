@@ -1,13 +1,20 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.Extensions.Configuration;
+using MongoDB.Driver;
 using PoznamkyApp.Models;
 
 namespace PoznamkyApp.Data
 {
-    public class AppDbContext : DbContext
+    public class MongoDbContext
     {
-        public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
+        private readonly IMongoDatabase _database;
 
-        public DbSet<User> Users { get; set; }
-        public DbSet<Note> Notes { get; set; }
+        public MongoDbContext(IConfiguration config)
+        {
+            var client = new MongoClient(config.GetConnectionString("MongoDb"));
+            _database = client.GetDatabase("PoznamkyAppDb");
+        }
+
+        public IMongoCollection<User> Users => _database.GetCollection<User>("Users");
+        public IMongoCollection<Note> Notes => _database.GetCollection<Note>("Notes");
     }
 }
